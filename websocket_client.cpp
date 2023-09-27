@@ -14,9 +14,6 @@ using websocketpp::lib::placeholders::_2;
 using websocketpp::lib::bind;
 
 
-
-
-
 context_ptr on_tls_init() {
     context_ptr ctx = websocketpp::lib::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::sslv23);
 
@@ -26,6 +23,7 @@ context_ptr on_tls_init() {
                          boost::asio::ssl::context::no_sslv3 |
                          boost::asio::ssl::context::single_dh_use);
 
+        // TODO - this disables verification, replace with real code
         ctx->set_verify_mode(boost::asio::ssl::verify_none);
     } catch (std::exception& e) {
         std::cout << e.what() << std::endl;
@@ -33,7 +31,7 @@ context_ptr on_tls_init() {
     return ctx;
 }
 
-std::string stomp_message(std::string type, std::vector<std::vector<std::string>>  headers){
+std::string stomp_message(std::string type, const std::vector<std::vector<std::string>>&  headers){
 
     std::string msg =  type;
     msg = msg.append("\r\n");
@@ -50,15 +48,23 @@ std::string stomp_message(std::string type, std::vector<std::vector<std::string>
     return msg;
 }
 
-void runClient(std::string uri, std::string token, std::vector<std::string> destinations, void(*fp)(const std::string&)){
+void runClient(
+        const std::string& uri,
+        const std::string & token,
+        const std::vector<std::string> & destinations,
+        void(*fp)(const std::string&)){
     client c;
-
 
     try {
         // Set logging to be pretty verbose (everything except message payloads)
-        c.set_access_channels(websocketpp::log::alevel::all);
-        c.clear_access_channels(websocketpp::log::alevel::frame_payload);
+        //c.set_access_channels(websocketpp::log::alevel::all);
+        //c.clear_access_channels(websocketpp::log::alevel::frame_payload);
+        //c.set_error_channels(websocketpp::log::elevel::all);
+
         c.set_error_channels(websocketpp::log::elevel::all);
+
+        c.clear_access_channels((websocketpp::log::elevel::all));
+        c.set_access_channels(websocketpp::log::alevel::app);
 
         // Initialize ASIO
         c.init_asio();
@@ -69,10 +75,13 @@ void runClient(std::string uri, std::string token, std::vector<std::string> dest
 
             c.get_alog().write(websocketpp::log::alevel::app, "Connection established, sending credentials");
 
-            c.send(hdl,
+            c.send(std::move(hdl),
                    stomp_message(
                            "CONNECT",
-                           {{"passcode",token}}
+                           {
+                               {"passcode",token},
+                               {"heart-beat","0,30000"}
+                           }
                            ),
                    websocketpp::frame::opcode::text, ec
                    );
