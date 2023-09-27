@@ -21,5 +21,4 @@ include_directories(${http_SOURCE_DIR})
 include_directories(${json_SOURCE_DIR}/include)
 include_directories(${websocket_SOURCE_DIR})
 
-
 target_link_libraries(af_select_sample_cpp PRIVATE nlohmann_json::nlohmann_json ssl crypto  )
