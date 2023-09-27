@@ -6,7 +6,7 @@
  * @param destinations - a list of destinations to subscribe to
  * @param fp - a callback for messages
  */
-void runClient(
+void run_client(
         const std::string & uri,
         const std::string & token,
         const std::vector<std::string> & destinations,

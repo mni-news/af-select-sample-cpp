@@ -52,7 +52,7 @@ int main(int argc, char ** argv) {
 
 
     //Websocket API Interaction
-    runClient(
+    run_client(
             "wss://select.alphaflash.com/wss",
             token ,
             {"/topic/observations"},

@@ -9,6 +9,12 @@ This code is for demo purposes only.
 * The Boost library
 * Openssl library
 
+## Running
+
+After this has been compiled, run with:
+
+    af_select_sample_cpp <username> <password>
+
 ## Build and Dependencies
 
 The build file is in CMakeLists.txt. 

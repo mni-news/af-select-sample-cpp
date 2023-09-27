@@ -5,12 +5,10 @@
 #include <websocketpp/connection.hpp>
 
 #include <iostream>
+#include <utility>
 
 typedef websocketpp::client<websocketpp::config::asio_tls_client> client;
 typedef websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context> context_ptr;
-
-using websocketpp::lib::placeholders::_1;
-using websocketpp::lib::placeholders::_2;
 using websocketpp::lib::bind;
 
 
@@ -33,7 +31,7 @@ context_ptr on_tls_init() {
 
 std::string stomp_message(std::string type, const std::vector<std::vector<std::string>>&  headers){
 
-    std::string msg =  type;
+    std::string msg =  std::move(type);
     msg = msg.append("\r\n");
 
     for (std::vector<std::string> header : headers) {
@@ -48,47 +46,40 @@ std::string stomp_message(std::string type, const std::vector<std::vector<std::s
     return msg;
 }
 
-void runClient(
+void run_client(
         const std::string& uri,
         const std::string & token,
         const std::vector<std::string> & destinations,
-        void(*fp)(const std::string&)){
+        void(*handler)(const std::string&)){
     client c;
 
     try {
-        // Set logging to be pretty verbose (everything except message payloads)
-        //c.set_access_channels(websocketpp::log::alevel::all);
-        //c.clear_access_channels(websocketpp::log::alevel::frame_payload);
-        //c.set_error_channels(websocketpp::log::elevel::all);
 
+        // configure websocketpp logging
         c.set_error_channels(websocketpp::log::elevel::all);
-
         c.clear_access_channels((websocketpp::log::elevel::all));
         c.set_access_channels(websocketpp::log::alevel::app);
 
         // Initialize ASIO
         c.init_asio();
 
-        // Register our message handler
+        // on open connection
         c.set_open_handler([&c, &token](websocketpp::connection_hdl hdl) {
             websocketpp::lib::error_code ec;
 
             c.get_alog().write(websocketpp::log::alevel::app, "Connection established, sending credentials");
 
-            c.send(std::move(hdl),
-                   stomp_message(
-                           "CONNECT",
-                           {
-                               {"passcode",token},
-                               {"heart-beat","0,30000"}
-                           }
-                           ),
-                   websocketpp::frame::opcode::text, ec
-                   );
+            c.send(
+                std::move(hdl),
+               stomp_message("CONNECT",{{"passcode",token},{"heart-beat","0,30000"}}),
+               websocketpp::frame::opcode::text, ec
+               );
 
         });
-        c.set_message_handler([&c, &destinations, &fp](websocketpp::connection_hdl hdl,
-                                 websocketpp::connection<websocketpp::config::asio_tls_client>::message_ptr msg) {
+
+        // on websocket message
+        c.set_message_handler([&c, &destinations, &handler](const websocketpp::connection_hdl& hdl,
+                                 const websocketpp::connection<websocketpp::config::asio_tls_client>::message_ptr& msg) {
 
             if (msg->get_payload().size() == 1){
                 c.get_alog().write(websocketpp::log::alevel::app, "Received HEARTBEAT ");
@@ -99,7 +90,8 @@ void runClient(
                     c.get_alog().write(websocketpp::log::alevel::app, "Connection successful, subscribing to: " + destination);
 
                     websocketpp::lib::error_code ec;
-                    c.send(hdl,
+                    c.send(
+                            hdl,
                            stomp_message("SUBSCRIBE",{{"destination",destination}}),
                            websocketpp::frame::opcode::text,
                            ec
@@ -107,9 +99,11 @@ void runClient(
                 }
 
             } else {
-                fp(msg->get_payload());
+                handler(msg->get_payload());
             }
         });
+
+        // on TLS
         c.set_tls_init_handler(bind(&on_tls_init));
 
         websocketpp::lib::error_code ec;
