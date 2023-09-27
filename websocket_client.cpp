@@ -90,7 +90,9 @@ void runClient(
         c.set_message_handler([&c, &destinations, &fp](websocketpp::connection_hdl hdl,
                                  websocketpp::connection<websocketpp::config::asio_tls_client>::message_ptr msg) {
 
-            if (msg->get_payload().rfind("CONNECTED",0) == 0){
+            if (msg->get_payload().size() == 1){
+                c.get_alog().write(websocketpp::log::alevel::app, "Received HEARTBEAT ");
+            } else if (msg->get_payload().rfind("CONNECTED",0) == 0){
 
                 for (std::string destination: destinations) {
 
@@ -98,10 +100,7 @@ void runClient(
 
                     websocketpp::lib::error_code ec;
                     c.send(hdl,
-                           stomp_message(
-                                   "SUBSCRIBE",
-                                   {{"destination",destination}}
-                                   ),
+                           stomp_message("SUBSCRIBE",{{"destination",destination}}),
                            websocketpp::frame::opcode::text,
                            ec
                     );

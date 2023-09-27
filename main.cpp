@@ -60,14 +60,7 @@ int main(int argc, char ** argv) {
 
                 //TODO - parse stomp message and extract payload
 
-                if (message.size() == 1){
-                    std::cout <<"Received HEARTBEAT" << std::endl;
-                } else {
-
-                    std::cout << "Received Message: " << std::endl
-                              << "[" << message << "]" << std::endl;
-                }
-
+                std::cout << "Received Message: " << std::endl << message << std::endl;
             });
 
     return 0;
